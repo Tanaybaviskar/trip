@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
 <title>Goa in Three Days</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: azulejo-tiled masthead, live "now" card, sticky switcher, time-gutter timeline per day, shared packing list */
 :root{
@@ -189,6 +189,17 @@ label.fld{display:grid;gap:4px;font-size:.78rem;font-weight:600;color:var(--mute
 .toast[hidden]{display:none}
 footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)}
 
+.nearrow{display:flex;flex-wrap:wrap;gap:8px}
+.nearrow select{width:auto;flex:1;min-width:160px}
+.picks{display:grid;gap:10px;margin-top:2px}
+.pick{display:grid;gap:5px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;min-width:0}
+.pick h4{margin:0;font-family:var(--f-display);font-size:1.15rem}
+.pick .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pick .try{font-size:.92rem;color:var(--ink)}
+.pick .why{font-size:.86rem;color:var(--muted)}
+.pick a{font-weight:600;font-size:.86rem}
+.dist{font-family:var(--f-mono);font-weight:600;font-size:.74rem;padding:2px 8px;border-radius:99px;background:var(--azul);color:var(--on-azul)}
+.dist.far{background:var(--sun-soft);color:var(--sun)}
 @media (max-width:520px){
   .row,.leg{grid-template-columns:3.3rem 1fr}
   .row::before,.leg::before{left:calc(3.3rem + 5px)}
@@ -255,7 +266,15 @@ footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font-si
     <div id="packlist"></div>
   </section>
 
-  <section class="sec" id="eat"><h2>Food and tips</h2><div class="grid2" id="food"></div>
+  <section class="sec" id="eat"><h2>Food and tips</h2>
+    <div class="panel" id="near" style="margin-bottom:14px">
+      <h3>Best food near you</h3>
+      <p>The top 3 well-known places within 3 km, chosen for reputation, how many visitors go there and how good it is for tourists, not just star ratings. Tap again any time to refresh.</p>
+      <div class="nearrow"><button class="btn pri" type="button" id="nearGps">Use my location</button><select id="nearSel" aria-label="Or pick a stop"></select><button class="btn" type="button" id="nearPick">Show</button></div>
+      <div id="nearOut" aria-live="polite"></div>
+      <p class="hint">Distances are straight-line from approximate map points, so check opening hours before you go. Opening Maps needs internet.</p>
+    </div>
+    <div class="grid2" id="food"></div>
     <div class="src">Sources: hotel listings on Expedia and Hotels.com (breakfast hours), Outlook Traveller and Curly Tales (Dudhsagar), EazyDiner and LBB (Burger Factory, Fat Fish), Curly Tales and Travjoy (breakfast spots), Wanderlog (Panjim restaurants).</div>
   </section>
   <section class="sec" id="sync"><h2>Sync with another phone</h2>
@@ -320,7 +339,7 @@ var DAYS=[
  {k:'drive',m:'10 min',to:'Chapora Fort'},
  {k:'sun',t:'16:50',end:'18:10',title:'Chapora Fort',short:'Chapora Fort',place:true,note:'A short climb to the ramparts. Stay up there for the sunset.',tags:['Fort','Sunset']},
  {k:'drive',m:'20 min',to:'Burger Factory, Anjuna'},
- {k:'meal',t:'18:30',end:'19:40',title:'Dinner at Burger Factory',note:'The Anjuna outlet opens for dinner at 6:30 pm. About ₹1,100 for two. See the price notes below for cheaper options.',
+ {k:'meal',t:'18:30',end:'19:40',title:'Dinner at Burger Factory',note:'The Anjuna outlet opens for dinner at 6:30 pm.',
   opts:[['Beef or chicken burger with fries','Their patties are made fresh.'],['Cheaper nearby','Ginnis Biggie Burger, Anjuna: about ₹750 for two.']]},
  {k:'drive',m:'35 min',to:'Hotel'},
  {k:'base',t:'20:15',title:'Back at Hyatt Place'}
@@ -566,11 +585,11 @@ function renderMsgs(){
 var pend=false;
 function renderAll(){
   pend=false;
-  renderDays();renderOverall();renderMsgs();renderNow();
-  var ae=document.activeElement;
-  if(ae&&ae.closest&&ae.closest('#packlist')){S.packPending=true}else{renderPack();S.packPending=false}
+  [renderDays,renderOverall,renderMsgs,renderNow].forEach(function(f){try{f()}catch(e){console.error(e)}});
+  try{var ae=document.activeElement;
+    if(ae&&ae.classList&&ae.classList.contains('pt')){S.packPending=true}else{renderPack();S.packPending=false}}catch(e){console.error(e)}
 }
-function sched(){if(pend)return;pend=true;requestAnimationFrame(renderAll)}
+function sched(){if(pend)return;pend=true;Promise.resolve().then(renderAll)}
 
 /* ---------- writes ---------- */
 var tt=null;
@@ -672,7 +691,7 @@ document.addEventListener('change',function(ev){
   }
 });
 document.addEventListener('focusout',function(){
-  setTimeout(function(){var ae=document.activeElement;if(S.packPending&&!(ae&&ae.closest&&ae.closest('#packlist'))){S.packPending=false;renderPack()}},0);
+  setTimeout(function(){var ae=document.activeElement;if(S.packPending&&!(ae&&ae.classList&&ae.classList.contains('pt'))){S.packPending=false;renderPack()}},0);
 });
 $('packcat').innerHTML=PACK_CATS.map(function(c){return '<option>'+esc(c)+'</option>'}).join('');
 $('packform').addEventListener('submit',function(ev){
@@ -690,14 +709,56 @@ $('simday').addEventListener('change',function(){if(!$('simday').value){S.sim=nu
 
 /* ---------- food + tips (static) ---------- */
 $('food').innerHTML=
- '<div class="panel"><h3>Is Burger Factory pricey?</h3><p>Mid-range. Listings put the Anjuna outlet at about ₹1,100 for two. One reviewer found the classic chicken burger overpriced, while the beef burger was a standout.</p>'
- +'<div class="price"><span>Ginnis Biggie Burger, Anjuna</span><span>~₹750</span><span>Burger Factory, Anjuna</span><span>~₹1,100</span><span>The Burger House, Anjuna</span><span>~₹1,400</span><small>Approximate cost for two. Burger Factory serves 11:30–3:30 and 6:30–10:30.</small></div>'
- +'<p>To spend less, Fat Fish for lunch is the better value, and Adda in Anjuna is listed at about ₹600 for two for Goan and North Indian.</p></div>'
- +'<div class="panel"><h3>Hotel breakfast</h3><p>Travel listings show the free buffet from 7:30 to 10:30 each morning. Because that can depend on your rate plan, confirm at the front desk when you check in.</p><p>That is why days 2 and 3 start at 8:15 and 8:20 instead of earlier.</p></div>'
+ '<div class="panel"><h3>Hotel breakfast</h3><p>Travel listings show the free buffet from 7:30 to 10:30 each morning. Because that can depend on your rate plan, confirm at the front desk when you check in.</p><p>That is why days 2 and 3 start at 8:15 and 8:20 instead of earlier.</p></div>'
  +'<div class="panel"><h3>Goan things to try</h3><div class="dishes"><span>Ros omelette</span><span>Choris pao</span><span>Bhaji pao</span><span>Fish thali</span><span>Recheado fry</span><span>Chicken cafreal</span><span>Prawn balchão</span><span>Sorpotel</span><span>Sol kadhi</span><span>Bebinca</span></div></div>'
  +'<div class="panel"><h3>Before you go</h3><ul><li>Hire a car with a driver for all three days. Distances are long.</li><li>Day 3 returns around 9:30 pm. Skip Butterfly Beach if boats are not running and you will be back earlier.</li><li>Check Dudhsagar timings and booking on the day. Jeeps have been listed from about 8:30 to 4:00.</li><li>Carry sunscreen, water, swimwear and a scarf or shawl for the churches.</li><li>Times are estimates. Traffic and queues can add 15–30 minutes.</li></ul></div>';
 
-/* ---------- boot: static first, then shared data ---------- */
+
+/* ---------- best food near you ---------- */
+var FOOD=[
+['Britto\'s','Baga Beach','Goan seafood',15.5565,73.7515,9,'Special Goan fish thali (fish curry, rava-fried fish, vegetable curry, sol kadhi), prawn dishes','A long-running beachfront name in Baga that most visitors know.'],
+['Fat Fish','Arpora','Goan and Indian',15.5545,73.7685,9,'Goan fish thali (served about 1 to 3 pm), king fish recheado fry, prawn butter garlic','Big, busy and well known with visitors. Arrive early at lunch.'],
+['Souza Lobo','Calangute Beach','Goan seafood',15.5445,73.7545,8.5,'Goan fish curry rice, recheado fried fish, prawns and calamari','One of Calangute\'s oldest beachfront restaurants.'],
+['Bomra\'s','Candolim','Burmese',15.5165,73.7635,8,'Khow suey and Burmese tea leaf salad','Well-known Burmese restaurant in Candolim and popular with visitors.'],
+['Infantaria','Candolim, Fort Aguada Road','Bakery cafe',15.5130,73.7655,7.5,'Panini sandwich, berry smoothie, fresh bakes','Popular cafe on the way to Aguada Fort. Closed on Tuesdays.'],
+['Barrica Bistrot','Candolim main road','All-day breakfast',15.5175,73.7640,6.5,'Puri bhaji, neer dosa, egg paratha, kingfish thali','Opposite Novotel. Breakfast is served all day.'],
+['Burger Factory','Anjuna','Burgers',15.5760,73.7415,7,'Beef burger with double cheddar and bacon, chicken fillet burger, fries','Popular Anjuna burger place, open from 6:30 pm for dinner.'],
+['Fat Fish (Anjuna)','Vagator Beach Road','Seafood',15.5900,73.7410,7.5,'Local fish curry thali with kingfish fry, crab and prawns','Same seafood-first menu as the Arpora branch, with large parking.'],
+['Thalassa','Small Vagator','Greek',15.5960,73.7370,8.5,'Mezze, salads and gyros. Book ahead for sunset.','Famous for its sunset view over the sea.'],
+['Ritz Classic','Panjim','Goan seafood',15.4975,73.8310,8.5,'Seafood platter, recheado squid, fried squid','A Panjim favourite for seafood.'],
+['Viva Panjim','Fontainhas, Panjim','Goan home-style',15.4985,73.8335,8,'Fish curry rice, prawn balchão, sorpotel with sannas, bebinca','In the Fontainhas lanes. Authentic Goan food at fair prices.'],
+['Hotel Venite','Fontainhas, Panjim','Goan and Portuguese',15.4980,73.8330,7.5,'Chicken cafreal, xacuti and other Goan classics','Heritage balcony restaurant in the old Latin quarter.'],
+['Fisherman\'s Wharf','Cavelossim','Seafood',15.1700,73.9420,8.5,'Pomfret butter pepper, pomfret tawa fry','Riverside seafood restaurant and a well-known name in south Goa.'],
+['Martin\'s Corner','Betalbatim','Goan seafood',15.2765,73.9145,9,'Calamari fry, prawn pulao, Dutch truffle for dessert','Iconic south Goa seafood restaurant with a big visitor following.'],
+['Dropadi','Palolem Beach','Seafood and Indian',15.0100,74.0235,7.5,'Seafood platter','Beachfront restaurant right on Palolem.'],
+['Cafe Inn','Palolem','Mediterranean and Indian',15.0097,74.0233,7.5,'Mezze platter, full English breakfast, muesli with fresh juice','Long-standing Palolem cafe that many travellers know.'],
+['Papillon','Palolem','Tandoor and Goan seafood',15.0102,74.0238,7,'Goan seafood and tandoor dishes','Popular Palolem restaurant with a broad menu.']
+];
+var SPOTS=[['Hyatt Place Candolim',15.518,73.764],['Aguada Fort',15.4927,73.7737],['Candolim Beach',15.5185,73.76],['Baga Beach',15.5565,73.7515],['Vagator Beach',15.5985,73.744],['Chapora Fort',15.6055,73.736],['Dudhsagar Falls',15.3144,74.3143],['Old Goa (Bom Jesus, Our Lady of the Mount)',15.501,73.9115],['Dona Paula',15.4535,73.801],['Fontainhas',15.498,73.833],['Cavelossim Beach',15.171,73.9395],['Cabo de Rama',15.089,73.918],['Cola Beach',15.045,73.99],['Palolem Beach',15.01,74.0232]];
+function km(a,b,c,d){var r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,t=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)*Math.sin(y/2);return 12742*Math.asin(Math.sqrt(t))}
+function showNear(lat,lng,label){
+  var all=FOOD.map(function(f){return {f:f,d:km(lat,lng,f[3],f[4])}});
+  var inn=all.filter(function(x){return x.d<=3}).sort(function(a,b){return (b.f[5]-0.6*b.d)-(a.f[5]-0.6*a.d)});
+  var picks=inn.slice(0,3),far=false;
+  if(picks.length<3){far=true;var rest=all.filter(function(x){return x.d>3}).sort(function(a,b){return a.d-b.d});picks=picks.concat(rest.slice(0,3-picks.length))}
+  var t=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'numeric',minute:'2-digit'});
+  var out='<p class="hint">From '+esc(label)+' · updated '+esc(t)+'.'+(far?' My list has '+(inn.length?'only '+inn.length:'nothing')+' within 3 km here, so the rest are the nearest further away.':'')+'</p><div class="picks">';
+  picks.forEach(function(x){
+    var f=x.f,dd=x.d<1?Math.round(x.d*1000)+' m':x.d.toFixed(1)+' km';
+    out+='<div class="pick"><div class="meta"><span class="dist'+(x.d>3?' far':'')+'">'+dd+'</span><span class="tag">'+esc(f[2])+'</span></div><h4>'+esc(f[0])+'</h4><div class="why">'+esc(f[1])+'. '+esc(f[7])+'</div><div class="try"><b>Try:</b> '+esc(f[6])+'</div><a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(f[0]+', '+f[1]+', Goa')+'" target="_blank" rel="noopener">Open in Maps</a></div>';
+  });
+  $('nearOut').innerHTML=out+'</div>';
+}
+$('nearSel').innerHTML=SPOTS.map(function(s,i){return '<option value="'+i+'">'+esc(s[0])+'</option>'}).join('');
+$('nearPick').addEventListener('click',function(){var s=SPOTS[+$('nearSel').value];showNear(s[1],s[2],s[0])});
+$('nearGps').addEventListener('click',function(){
+  var o=$('nearOut');
+  if(!navigator.geolocation){o.innerHTML='<p class="hint">This browser cannot share your location. Pick a stop and tap Show.</p>';return}
+  o.innerHTML='<p class="hint">Finding your location…</p>';
+  navigator.geolocation.getCurrentPosition(function(p){showNear(p.coords.latitude,p.coords.longitude,'your location')},function(){o.innerHTML='<p class="hint">Could not get your location. Allow location for this page, or pick a stop and tap Show.</p>'},{enableHighAccuracy:true,timeout:12000,maximumAge:0});
+});
+
+/* ---------- boot ---------- */
 renderAll();
 setInterval(function(){if(!S.sim)renderNow()},30000);
 
@@ -719,7 +780,7 @@ function LocalDB(){
     return {docs:docs.map(function(x){return {id:x.id,exists:true,data:function(){return x.d}}})};
   }
   var timer=null;
-  function notify(){clearTimeout(timer);timer=setTimeout(function(){subs.slice().forEach(function(s){s.next(build(s))})},0)}
+  function notify(){subs.slice().forEach(function(s){s.next(build(s))})}
   function auto(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
   function docRef(path){
     return {
@@ -733,7 +794,7 @@ function LocalDB(){
   function query(col,order){
     return {
       orderBy:function(f){return query(col,f)},
-      onSnapshot:function(next){var s={col:col,order:order,next:next};subs.push(s);setTimeout(function(){next(build(s))},0);return function(){subs=subs.filter(function(x){return x!==s})}}
+      onSnapshot:function(next){var s={col:col,order:order,next:next};subs.push(s);next(build(s));return function(){subs=subs.filter(function(x){return x!==s})}}
     };
   }
   return {
